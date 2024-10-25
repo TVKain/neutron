@@ -1696,6 +1696,15 @@ class OVNClient(object):
 
         is_gw_port = const.DEVICE_OWNER_ROUTER_GW == port.get(
             'device_owner')
+        
+        # NOTE(khanhtv28 - fci)
+        # Force Reside on redirect chassis option of the internal port for 
+        # virtual router conntected to VLAN or FLAT / External gateway for VLAN or FLAT
+        # to 'true' 
+        if network_type in [const.TYPE_VLAN, const.TYPE_FLAT]:
+            options[ovn_const.LRP_OPTIONS_RESIDE_REDIR_CH] = 'true'
+
+        # NOTE(khanhtv28 - fci)
 
         if is_gw_port and (ovn_conf.is_ovn_distributed_floating_ip() or
                            ovn_conf.is_ovn_emit_need_to_frag_enabled()):
@@ -1717,21 +1726,32 @@ class OVNClient(object):
                                     network_mtu)
                             break
                 if ovn_conf.is_ovn_distributed_floating_ip():
+                    # NOTE(khanhtv28 - fci)
+                    # Force Reside on redirect chassis option of the external port for
+                    # virtual router to 'true' 
+                    options[ovn_const.LRP_OPTIONS_RESIDE_REDIR_CH] = 'true'
+                    # NOTE(khanhtv28 - fci)
+                    
+                    # NOTE(khanhtv28 - fci)
+                    # Uncomment the below code to make the redirect-type option always None i.e Overlay
+                    #
                     # NOTE(ltomasbo): For VLAN type networks connected through
                     # the gateway port there is a need to set the redirect-type
                     # option to bridge to ensure traffic is not centralized
                     # through the controller.
                     # If there are no VLAN type networks attached we need to
                     # still make it centralized.
-                    enable_redirect = False
-                    if networks:
-                        enable_redirect = all(
-                            net.get(pnet.NETWORK_TYPE) in [const.TYPE_VLAN,
-                                                           const.TYPE_FLAT]
-                            for net in networks)
-                    if enable_redirect:
-                        options[ovn_const.LRP_OPTIONS_REDIRECT_TYPE] = (
-                            ovn_const.BRIDGE_REDIRECT_TYPE)
+                    # enable_redirect = False
+                    # if networks:
+                    #     enable_redirect = all(
+                    #         net.get(pnet.NETWORK_TYPE) in [const.TYPE_VLAN,
+                    #                                        const.TYPE_FLAT]
+                    #         for net in networks)
+                    # if enable_redirect:
+                    #     options[ovn_const.LRP_OPTIONS_REDIRECT_TYPE] = (
+                    #         ovn_const.BRIDGE_REDIRECT_TYPE)
+                    #
+                    # NOTE(khanhtv28 - fci)
 
         return options
 
