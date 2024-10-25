@@ -901,7 +901,33 @@ class OVNClient(object):
 
         if ovn_conf.is_ovn_distributed_floating_ip():
             if self._nb_idl.lsp_get_up(floatingip['port_id']).execute():
+                # TODO (khanhtv28) 
+                # for logical switch port that is used as a VIP in overlay network, 
+                # we should set the external_mac to the MAC address as well 
                 columns['external_mac'] = port_db['mac_address']
+        
+        # (khanhtv28)
+        admin_context = n_context.get_admin_context()
+        
+        host_port = self._plugin.get_port(admin_context, floatingip['port_id'])
+        
+        segments = segments_db.get_network_segments(admin_context, host_port['network_id'])
+        
+        if len(segments) != 0: 
+            segment = segments[0]
+            
+            LOG.info(f"(khanhtv28) Segment for network {host_port['network_id']} is {segment['network_type']}")
+
+            if (ovn_conf.is_ovn_distributed_floating_ip() and 
+                segment['network_type'] in [const.TYPE_VLAN, const.TYPE_FLAT]):
+                LOG.info(f"(khanhtv28) Clearning external MAC for this {columns}")
+                
+                # Clear the external  MAC 
+                columns.pop('external_mac', None)
+                LOG.info(f"(khanhtv28) Clearning external MAC for this {columns}")
+        # (khanhtv28)            
+                
+    
 
         # TODO(mjozefcz): Remove this workaround when OVN LB
         # will support both decentralized FIPs on LB and member.
@@ -918,6 +944,7 @@ class OVNClient(object):
                         "NAT entry.", floatingip['port_id'])
             columns.pop('logical_port', None)
             columns.pop('external_mac', None)
+            
         commands.append(self._nb_idl.add_nat_rule_in_lrouter(gw_lrouter_name,
                                                              **columns))
 
@@ -943,6 +970,10 @@ class OVNClient(object):
             LOG.warning("LSP for floatingip %s, has not been found! "
                         "Cannot set FIP on VIP.",
                         floatingip['id'])
+        
+        
+        
+        
         self._transaction(commands, txn=txn)
 
     def _is_lb_member_fip(self, context, fip):

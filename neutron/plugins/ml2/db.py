@@ -36,6 +36,11 @@ from neutron.plugins.ml2 import models
 from neutron.services.segments import db as seg_db
 from neutron.services.segments import exceptions as seg_exc
 
+# (khanhtv28)
+from neutron.db.models import segment as segment_model
+# (khanhtv28)
+
+
 LOG = log.getLogger(__name__)
 
 # limit the number of port OR LIKE statements in one query
@@ -148,6 +153,26 @@ def get_port(context, port_id):
             LOG.error("Multiple ports have port_id starting with %s",
                       port_id)
             return
+
+ 
+# (khanhtv28)
+def get_network_segment_by_network_id(context, network_id): 
+    with db_api.CONTEXT_READER.using(context):
+        try:
+            # Set enable_eagerloads to True, so that lazy load can be
+            # proceed later.
+            record = (context.session.query(segment_model.NetworkSegment).
+                      enable_eagerloads(True).
+                      filter(segment_model.NetworkSegment.network_id.startswith(network_id)).
+                      one())
+            return record
+        except exc.NoResultFound:
+            return
+        except exc.MultipleResultsFound:
+            LOG.error("Multiple network segments have network_id starting with %s",
+                      network_id)
+            return    
+# (khanhtv28)
 
 
 def get_ports_and_sgs(context, port_ids):

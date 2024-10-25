@@ -1135,7 +1135,34 @@ class OVNMechanismDriver(api.MechanismDriver):
         if ovn_conf.is_ovn_distributed_floating_ip():
             if up:
                 mac = nat['external_ids'].get(ovn_const.OVN_FIP_EXT_MAC_KEY)
+                
                 if mac and nat['external_mac'] != mac:
+                    try: 
+                        admin_context = n_context.get_admin_context()
+                        port_db = ml2_db.get_port(admin_context, port_db)
+                        segment = ml2_db.get_network_segment_by_network_id(admin_context, port_db["network_id"])                    
+                    except Exception as e: 
+                        LOG.info(f"(khanhtv28) skip clearing external MAC failed, error when fetching port or segment {e}")
+                        
+                        # (khanhtv28) This is put here to ensure that when an exeption happens, 
+                        # the normal OpenStack flow still works 
+                        LOG.debug("Setting external_mac of port %s to %s",
+                                    port_id, mac)
+                        self.nb_ovn.db_set(
+                            'NAT', nat['_uuid'], ('external_mac', mac)).execute(
+                                check_error=True)
+                    else: 
+                        if segment['network_type'] in [const.TYPE_VLAN, const.TYPE_FLAT]:
+                            LOG.info("(khanhtv28) skip setting external MAC for VLAN/FLAT success")
+                        else: 
+                            LOG.debug("Setting external_mac of port %s to %s",
+                                    port_id, mac)
+                            self.nb_ovn.db_set(
+                                'NAT', nat['_uuid'], ('external_mac', mac)).execute(
+                                    check_error=True)
+                    # (khanhtv28)
+                    
+                    
                     LOG.debug("Setting external_mac of port %s to %s",
                               port_id, mac)
                     self.nb_ovn.db_set(
