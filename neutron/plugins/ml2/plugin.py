@@ -2922,3 +2922,10 @@ class Ml2Plugin(db_base_plugin_v2.NeutronDbPluginV2,
         ports = ports_obj.Port.get_ports_by_vnic_type_and_host(
             context, vnic_type, host)
         return [self._make_port_dict(port.db_obj) for port in ports]
+
+    
+    # (khanhtv28)
+    @db_api.retry_if_session_inactive()
+    def get_network_segment_by_network_id(self, context, network_id): 
+        return db.get_network_segment_by_network_id(context, network_id)
+    # (khanhtv28)
